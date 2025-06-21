@@ -1,14 +1,18 @@
-# Event QR Check-In App
+# Event Check-In App (with Admin + Export)
 
-A mobile-optimized web app for scanning QR codes at events.
+A mobile-friendly app to scan QR codes and manage events.
 
-- Built with HTML5 + JS
-- Uses html5-qrcode for camera access
-- Works great on phones
+## Features
 
-## How to Host
+- Multiple events
+- Continuous QR code scanning
+- Admin login with PIN (`1234`)
+- Export all scanned check-in data as CSV
 
-1. Push this to a GitHub repository
-2. Go to **Settings → Pages**
-3. Select `main` branch and `/root` folder
-4. Access your site at `https://yourusername.github.io/your-repo-name`
+## How to Use
+
+1. Open the site on your phone or browser.
+2. Tap "Yes" for Admin → enter PIN: `1234`
+3. Create an event
+4. Start scanning QR codes
+5. Tap “Export CSV” to download check-in data
