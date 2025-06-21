@@ -85,8 +85,14 @@
         (msg) => {
           const timestamp = new Date().toISOString();
           if (!scans[eventName]) scans[eventName] = [];
-          scans[eventName].push({ data: msg, time: timestamp });
-          updateLog(eventName);
+
+          const isDuplicate = scans[eventName].some(entry => entry.data === msg);
+          if (!isDuplicate) {
+            scans[eventName].push({ data: msg, time: timestamp });
+            updateLog(eventName);
+          } else {
+            log.innerText = `⚠️ Already checked in:\n${msg}\n\n` + log.innerText;
+          }
         },
         (err) => {}
       );
@@ -97,10 +103,10 @@
     }
 
     function exportCSV() {
-      let csv = "Event,Data,Timestamp\\n";
+      let csv = "Event,Data,Timestamp\n";
       for (const [event, entries] of Object.entries(scans)) {
         for (const entry of entries) {
-          csv += `"${event}","${entry.data.replace(/"/g, '""')}","${entry.time}"\\n`;
+          csv += `"${event}","${entry.data.replace(/"/g, '""')}","${entry.time}"\n`;
         }
       }
 
