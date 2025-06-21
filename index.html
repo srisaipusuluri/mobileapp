@@ -1,76 +1,116 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event QR Check-In</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Event Check-In with Admin</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-      max-width: 500px;
-      margin: auto;
-    }
-    h2, h3 {
-      text-align: center;
-    }
-    input, button {
-      width: 100%;
-      padding: 12px;
-      font-size: 1rem;
-      margin-top: 10px;
-    }
-    #reader {
-      margin-top: 20px;
-      width: 100%;
-    }
-    #result {
-      margin-top: 20px;
-      background: #f0f0f0;
-      padding: 10px;
-      border-radius: 8px;
-      font-size: 0.95rem;
-      word-wrap: break-word;
-    }
-    .hidden {
-      display: none;
-    }
+    body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 10px; font-size: 1rem; }
+    #reader { width: 100%; margin-top: 20px; }
+    .hidden { display: none; }
+    #log { margin-top: 20px; white-space: pre-wrap; background: #f0f0f0; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 
-  <h2>Create Event</h2>
-  <input type="text" id="eventName" placeholder="Event Name" />
-  <button onclick="startEvent()">Start Event</button>
+  <h2>Event Check-In</h2>
 
-  <div id="scannerSection" class="hidden">
-    <h3>Scan Attendee QR Code</h3>
+  <div id="authSection">
+    <p>Are you an admin?</p>
+    <button onclick="loginAdmin()">Yes</button>
+  </div>
+
+  <div id="pinSection" class="hidden">
+    <input type="password" id="adminPin" placeholder="Enter Admin PIN" />
+    <button onclick="verifyPin()">Login</button>
+  </div>
+
+  <div id="mainApp" class="hidden">
+    <input type="text" id="newEvent" placeholder="New Event Name" />
+    <button onclick="addEvent()">Add Event</button>
+
+    <select id="eventList"></select>
+
+    <button onclick="startScanner()">Start Scanner</button>
+    <button onclick="exportCSV()" id="exportBtn" class="hidden">Export CSV</button>
+
     <div id="reader"></div>
-    <div id="result"></div>
+    <div id="log"></div>
   </div>
 
   <script>
     let html5QrCode;
+    const eventList = document.getElementById('eventList');
+    const log = document.getElementById('log');
+    const scans = {};
+    let isAdmin = false;
 
-    function startEvent() {
-      const eventName = document.getElementById('eventName').value.trim();
-      if (!eventName) return alert("Please enter an event name.");
+    function loginAdmin() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('pinSection').classList.remove('hidden');
+    }
 
-      document.getElementById('scannerSection').classList.remove('hidden');
+    function verifyPin() {
+      const pin = document.getElementById('adminPin').value;
+      if (pin === "1234") {
+        isAdmin = true;
+        document.getElementById('pinSection').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('exportBtn').classList.remove('hidden');
+      } else {
+        alert("Incorrect PIN");
+      }
+    }
+
+    function addEvent() {
+      const name = document.getElementById('newEvent').value.trim();
+      if (!name) return;
+      const option = new Option(name, name);
+      eventList.add(option);
+      scans[name] = [];
+      eventList.value = name;
+      document.getElementById('newEvent').value = "";
+    }
+
+    function startScanner() {
+      const eventName = eventList.value;
+      if (!eventName) return alert("Please select an event");
 
       html5QrCode = new Html5Qrcode("reader");
       html5QrCode.start(
-        { facingMode: "environment" }, // Use rear camera
+        { facingMode: "environment" },
         { fps: 10, qrbox: 250 },
-        qrCodeMessage => {
-          document.getElementById('result').innerText = `✅ Scanned:\n${qrCodeMessage}`;
-          html5QrCode.stop(); // Stops scanning after one read
+        (msg) => {
+          const timestamp = new Date().toISOString();
+          if (!scans[eventName]) scans[eventName] = [];
+          scans[eventName].push({ data: msg, time: timestamp });
+          updateLog(eventName);
         },
-        errorMessage => {
-          // Optionally handle errors
-        }
+        (err) => {}
       );
+    }
+
+    function updateLog(eventName) {
+      log.innerText = scans[eventName].map(s => `🟢 ${s.data} \n⏱ ${s.time}`).join("\n\n");
+    }
+
+    function exportCSV() {
+      let csv = "Event,Data,Timestamp\\n";
+      for (const [event, entries] of Object.entries(scans)) {
+        for (const entry of entries) {
+          csv += `"${event}","${entry.data.replace(/"/g, '""')}","${entry.time}"\\n`;
+        }
+      }
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "checkin_data.csv";
+      a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 
