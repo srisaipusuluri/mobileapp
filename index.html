@@ -3,27 +3,41 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Event Check-In</title>
+  <title>Event QR Check-In</title>
   <style>
     body {
       font-family: sans-serif;
       margin: 0;
-      background: #f9f9f9;
+      padding: 0;
+      background-color: #f4f4f4;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      justify-content: flex-start;
+      min-height: 100vh;
     }
 
-    h1 {
-      margin-bottom: 20px;
+    header {
+      background: #2c3e50;
+      color: white;
+      width: 100%;
+      padding: 16px;
+      text-align: center;
+      font-size: 20px;
+    }
+
+    main {
+      padding: 20px;
+      width: 100%;
+      max-width: 600px;
+      text-align: center;
     }
 
     button {
-      background-color: #28a745;
+      margin-top: 24px;
+      padding: 12px 20px;
+      background: #28a745;
       color: white;
-      padding: 14px 24px;
       border: none;
       border-radius: 8px;
       font-size: 16px;
@@ -36,7 +50,7 @@
       position: fixed;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.6);
+      background-color: rgba(0,0,0,0.5);
       z-index: 9999;
       justify-content: center;
       align-items: center;
@@ -45,7 +59,7 @@
     #checkin-popup-content {
       position: relative;
       background: white;
-      padding: 24px 32px;
+      padding: 30px 40px;
       border-radius: 16px;
       text-align: center;
       box-shadow: 0 8px 20px rgba(0,0,0,0.3);
@@ -68,27 +82,35 @@
 </head>
 <body>
 
-  <h1>Event QR Scanner</h1>
-  <button onclick="simulateCheckin()">Simulate Scan</button>
+  <header>
+    Event Check-In
+  </header>
 
-  <!-- Check-in Popup -->
+  <main>
+    <p>Scan a QR code to check in an attendee.</p>
+    <button onclick="onQRCodeScanned('Jordan Alvarez')">Simulate Check-In</button>
+  </main>
+
+  <!-- Check-in Confirmation Popup -->
   <div id="checkin-popup">
     <div id="checkin-popup-content">
       <button class="close-btn" onclick="closeCheckinPopup()">&times;</button>
-      ✅ <strong>Check-in Confirmed</strong><br>
+      ✅ <strong>Check-in Confirmed</strong><br><br>
       <span id="checkin-name-popup" style="font-weight: bold;"></span>
     </div>
   </div>
 
   <script>
+    function onQRCodeScanned(name) {
+      // Call this function after a successful QR scan
+      showCheckinPopup(name);
+    }
+
     function showCheckinPopup(name) {
-      const popup = document.getElementById("checkin-popup");
-      const nameSpan = document.getElementById("checkin-name-popup");
+      document.getElementById("checkin-name-popup").textContent = name;
+      document.getElementById("checkin-popup").style.display = "flex";
 
-      nameSpan.textContent = name;
-      popup.style.display = "flex";
-
-      // Auto-close after 3 seconds
+      // Optional: auto-close after 3 seconds
       setTimeout(() => {
         closeCheckinPopup();
       }, 3000);
@@ -97,11 +119,7 @@
     function closeCheckinPopup() {
       document.getElementById("checkin-popup").style.display = "none";
     }
-
-    // Test button simulates a QR scan
-    function simulateCheckin() {
-      showCheckinPopup("Jordan Alvarez");
-    }
   </script>
+
 </body>
 </html>
