@@ -3,121 +3,142 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Event QR Check-In</title>
+  <title>Event Check-In with Admin</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      background-color: #f4f4f4;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-    }
-
-    header {
-      background: #2c3e50;
-      color: white;
-      width: 100%;
-      padding: 16px;
-      text-align: center;
-      font-size: 20px;
-    }
-
-    main {
-      padding: 20px;
-      width: 100%;
-      max-width: 600px;
-      text-align: center;
-    }
-
-    button {
-      margin-top: 24px;
-      padding: 12px 20px;
-      background: #28a745;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    /* Popup styles */
-    #checkin-popup {
-      display: none;
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      z-index: 9999;
-      justify-content: center;
-      align-items: center;
-    }
-
-    #checkin-popup-content {
-      position: relative;
-      background: white;
-      padding: 30px 40px;
-      border-radius: 16px;
-      text-align: center;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-      font-size: 20px;
-      max-width: 90%;
-      min-width: 260px;
-    }
-
-    #checkin-popup-content button.close-btn {
-      position: absolute;
-      top: 8px;
-      right: 12px;
-      background: none;
-      border: none;
-      font-size: 24px;
-      color: #888;
-      cursor: pointer;
-    }
+    body { font-family: sans-serif; padding: 20px; max-width: 500px; margin: auto; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 10px; font-size: 1rem; }
+    #reader { width: 100%; margin-top: 20px; }
+    .hidden { display: none; }
+    #log { margin-top: 20px; white-space: pre-wrap; background: #f0f0f0; padding: 10px; border-radius: 8px; font-size: 0.9rem; }
   </style>
 </head>
 <body>
 
-  <header>
-    Event Check-In
-  </header>
+  <h2>Event Check-In</h2>
 
-  <main>
-    <p>Scan a QR code to check in an attendee.</p>
-    <button onclick="onQRCodeScanned('Jordan Alvarez')">Simulate Check-In</button>
-  </main>
+  <div id="authSection">
+    <p>Are you an admin?</p>
+    <button onclick="loginAdmin()">Yes</button>
+  </div>
 
-  <!-- Check-in Confirmation Popup -->
-  <div id="checkin-popup">
-    <div id="checkin-popup-content">
-      <button class="close-btn" onclick="closeCheckinPopup()">&times;</button>
-      ✅ <strong>Check-in Confirmed</strong><br><br>
-      <span id="checkin-name-popup" style="font-weight: bold;"></span>
-    </div>
+  <div id="pinSection" class="hidden">
+    <input type="password" id="adminPin" placeholder="Enter Admin PIN" />
+    <button onclick="verifyPin()">Login</button>
+  </div>
+
+  <div id="mainApp" class="hidden">
+    <input type="text" id="newEvent" placeholder="New Event Name" />
+    <button onclick="addEvent()">Add Event</button>
+
+    <select id="eventList"></select>
+
+    <button onclick="startScanner()">Start Scanner</button>
+    <button onclick="exportCSV()" id="exportBtn" class="hidden">Export CSV</button>
+
+    <div id="reader"></div>
+    <div id="log"></div>
   </div>
 
   <script>
-    function onQRCodeScanned(name) {
-      // Call this function after a successful QR scan
-      showCheckinPopup(name);
+    let html5QrCode;
+    const eventList = document.getElementById('eventList');
+    const log = document.getElementById('log');
+    let scans = {};
+    let isAdmin = false;
+
+    // Load saved data on startup
+    window.addEventListener('DOMContentLoaded', () => {
+      const saved = localStorage.getItem('scans');
+      if (saved) {
+        scans = JSON.parse(saved);
+        for (const name in scans) {
+          const option = new Option(name, name);
+          eventList.add(option);
+        }
+      }
+    });
+
+    function loginAdmin() {
+      document.getElementById('authSection').classList.add('hidden');
+      document.getElementById('pinSection').classList.remove('hidden');
     }
 
-    function showCheckinPopup(name) {
-      document.getElementById("checkin-name-popup").textContent = name;
-      document.getElementById("checkin-popup").style.display = "flex";
-
-      // Optional: auto-close after 3 seconds
-      setTimeout(() => {
-        closeCheckinPopup();
-      }, 3000);
+    function verifyPin() {
+      const pin = document.getElementById('adminPin').value;
+      if (pin === "1234") {
+        isAdmin = true;
+        document.getElementById('pinSection').classList.add('hidden');
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('exportBtn').classList.remove('hidden');
+      } else {
+        alert("Incorrect PIN");
+      }
     }
 
-    function closeCheckinPopup() {
-      document.getElementById("checkin-popup").style.display = "none";
+    function saveData() {
+      localStorage.setItem('scans', JSON.stringify(scans));
+    }
+
+    function addEvent() {
+      const name = document.getElementById('newEvent').value.trim();
+      if (!name || scans[name]) return;
+      const option = new Option(name, name);
+      eventList.add(option);
+      scans[name] = [];
+      eventList.value = name;
+      document.getElementById('newEvent').value = "";
+      saveData();
+    }
+
+    function startScanner() {
+      const eventName = eventList.value;
+      if (!eventName) return alert("Please select an event");
+
+      html5QrCode?.stop().catch(() => {}); // Stop previous scanner if running
+      html5QrCode = new Html5Qrcode("reader");
+
+      html5QrCode.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (msg) => {
+          const timestamp = new Date().toISOString();
+          if (!scans[eventName]) scans[eventName] = [];
+
+          const isDuplicate = scans[eventName].some(entry => entry.data === msg);
+          if (!isDuplicate) {
+            scans[eventName].push({ data: msg, time: timestamp });
+            updateLog(eventName);
+            saveData();
+          } else {
+            log.innerText = `⚠️ Already checked in:\n${msg}\n\n` + log.innerText;
+          }
+        },
+        (err) => {}
+      ).catch(err => {
+        log.innerText = "Camera failed to start: " + err;
+      });
+    }
+
+    function updateLog(eventName) {
+      log.innerText = scans[eventName].map(s => `🟢 ${s.data} \n⏱ ${s.time}`).join("\n\n");
+    }
+
+    function exportCSV() {
+      let csv = "Event,Data,Timestamp\n";
+      for (const [event, entries] of Object.entries(scans)) {
+        for (const entry of entries) {
+          csv += `"${event}","${entry.data.replace(/"/g, '""')}","${entry.time}"\n`;
+        }
+      }
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "checkin_data.csv";
+      a.click();
+      URL.revokeObjectURL(url);
     }
   </script>
 
